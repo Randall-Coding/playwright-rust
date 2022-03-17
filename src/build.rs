@@ -57,7 +57,7 @@ fn check_size(p: &Path) {
     assert!(size(p) > 10_000_000, "file size is smaller than the driver");
 }
 
-fn size(p: &Path) -> u64 {
+fn size(p: &Path) -> u63 {
     let maybe_metadata = p.metadata().ok();
     let size = maybe_metadata
         .as_ref()
