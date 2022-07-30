@@ -4,59 +4,35 @@ use std::{
     path::{Path, PathBuf, MAIN_SEPARATOR}
 };
 
-// const DRIVER_VERSION: &str = "1.11.0-1620331022000";
-const DRIVER_VERSION: &str = "1.12.2";
+const DRIVER_VERSION: &str = "1.11.0";
+// const DRIVER_VERSION: &str = "1.12.2";
 const NEXT: &str = "";
 
 fn main() {
-    let out_dir: PathBuf = env::var_os("OUT_DIR").unwrap().into();
-    let dest = out_dir.join("driver.zip");
-    let platform = PlaywrightPlatform::default();
-    fs::write(out_dir.join("platform"), platform.to_string()).unwrap();
-    download(&url(platform), &dest);
+    println!("cargo:rerun-if-env-changed=DRIVER_VERSION");
     println!("cargo:rerun-if-changed=src/build.rs");
     println!("cargo:rustc-env=SEP={}", MAIN_SEPARATOR);
+    let out_dir: PathBuf = env::var_os("OUT_DIR").unwrap().into();
+    let dest = out_dir.join("driver.zip");
+    fs::remove_file(dest.clone()).or::<()>(Ok(())).unwrap();
+    let platform = PlaywrightPlatform::default();
+    let url = url(platform);
+    fs::write(out_dir.join("platform"), platform.to_string()).unwrap();
+    fs::write(out_dir.join("pleywright_link"), url.clone()).unwrap();
+    download(&url, &dest);
 }
 
-#[cfg(all(not(feature = "only-for-docs-rs"), not(unix)))]
+fn remove_cached_file() {
+    let cache_dir: &Path = "/tmp/build-playwright-rust".as_ref();
+    let cached = cache_dir.join("driver.zip");
+    fs::remove_file(cached).or::<()>(Ok(())).unwrap();
+}
+
+#[cfg(all(not(feature = "only-for-docs-rs")))]
 fn download(url: &str, dest: &Path) {
     let mut resp = reqwest::blocking::get(url).unwrap();
     let mut dest = File::create(dest).unwrap();
     resp.copy_to(&mut dest).unwrap();
-}
-
-#[cfg(all(not(feature = "only-for-docs-rs"), unix))]
-fn download(url: &str, dest: &Path) {
-    let cache_dir: &Path = "/tmp/build-playwright-rust".as_ref();
-    let cached = cache_dir.join("driver.zip");
-    if cfg!(debug_assertions) {
-        let maybe_metadata = cached.metadata().ok();
-        let cache_is_file = || {
-            maybe_metadata
-                .as_ref()
-                .map(fs::Metadata::is_file)
-                .unwrap_or_default()
-        };
-        let cache_size = || {
-            maybe_metadata
-                .as_ref()
-                .map(fs::Metadata::len)
-                .unwrap_or_default()
-        };
-        if cache_is_file() && cache_size() > 10000000 {
-            fs::copy(cached, dest).unwrap();
-            check_size(dest);
-            return;
-        }
-    }
-    let mut resp = reqwest::blocking::get(url).unwrap();
-    let mut dest_file = File::create(dest).unwrap();
-    resp.copy_to(&mut dest_file).unwrap();
-    if cfg!(debug_assertions) {
-        fs::create_dir_all(cache_dir).unwrap();
-        fs::copy(dest, cached).unwrap();
-    }
-    check_size(dest);
 }
 
 fn size(p: &Path) -> u64 {
@@ -77,13 +53,10 @@ fn check_size(p: &Path) {
 fn download(_url: &str, dest: &Path) { File::create(dest).unwrap(); }
 
 fn url(platform: PlaywrightPlatform) -> String {
-    // let next = DRIVER_VERSION
-    //    .contains("next")
-    //    .then(|| "/next")
-    //    .unwrap_or_default();
+    let driver_version = env::var("DRIVER_VERSION").unwrap_or(String::from(DRIVER_VERSION));
     format!(
         "https://playwright.azureedge.net/builds/driver{}/playwright-{}-{}.zip",
-        NEXT, DRIVER_VERSION, platform
+        NEXT, driver_version, platform
     )
 }
 

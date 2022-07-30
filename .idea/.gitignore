@@ -1,0 +1,14 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+/playwright-rust-randall.iml
+/git_toolbox_prj.xml
+/misc.xml
+/vcs.xml
+/modules.xml
+/codeStyles

@@ -219,7 +219,7 @@ impl BrowserContext {
     // service_workers
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Event {
     // BackgroundPage for chromium persistent
     // ServiceWorker

@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="test 1.17" type="MAKEFILE_TARGET_RUN_CONFIGURATION" factoryName="Makefile">
+    <makefile filename="$PROJECT_DIR$/Makefile" target="test" workingDirectory="" arguments="">
+      <envs>
+        <env name="DRIVER_VERSION" value="1.17.2" />
+        <env name="PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD_GC" value="1" />
+      </envs>
+    </makefile>
+    <method v="2" />
+  </configuration>
+</component>

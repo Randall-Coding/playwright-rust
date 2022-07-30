@@ -1,0 +1,22 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Test DRIVER_VERSION 1.17.0" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="command" value="test --package playwright --test test &quot;&quot;" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+    <option name="channel" value="DEFAULT" />
+    <option name="requiredFeatures" value="true" />
+    <option name="allFeatures" value="false" />
+    <option name="emulateTerminal" value="false" />
+    <option name="withSudo" value="false" />
+    <option name="buildTarget" value="REMOTE" />
+    <option name="backtrace" value="SHORT" />
+    <envs>
+      <env name="DRIVER_VERSION" value="1.17.0" />
+      <env name="PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD_GC" value="1" />
+    </envs>
+    <option name="isRedirectInput" value="false" />
+    <option name="redirectInputPath" value="" />
+    <method v="2">
+      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+    </method>
+  </configuration>
+</component>

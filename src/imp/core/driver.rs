@@ -30,11 +30,12 @@ impl Driver {
 
     pub fn default_dest() -> PathBuf {
         let base: PathBuf = dirs::cache_dir().unwrap_or_else(env::temp_dir);
+        let driver_version = env::var("DRIVER_VERSION").unwrap_or("driver".to_string());
         let dir: PathBuf = [
             base.as_os_str(),
             "ms-playwright".as_ref(),
             "playwright-rust".as_ref(),
-            "driver".as_ref()
+            driver_version.as_ref()
         ]
         .iter()
         .collect();
