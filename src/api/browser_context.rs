@@ -1,6 +1,6 @@
 pub use crate::imp::browser_context::EventType;
 use crate::{
-    api::{Browser, Page},
+    api::{Browser, Page, request::Request},
     imp::{
         browser_context::{BrowserContext as Impl, Evt},
         core::*,
@@ -242,14 +242,18 @@ pub enum Event {
     /// ]);
     /// console.log(await newPage.evaluate('location.href'));
     /// ```
-    Page(Page)
+    Page(Page),
+    /// Emitted when a page issues a request. The request object is read-only. In order to intercept and mutate requests, see
+    /// [`method: Page.route`] or [`method: BrowserContext.route`].
+    Request(Request),
 }
 
 impl From<Evt> for Event {
     fn from(e: Evt) -> Event {
         match e {
             Evt::Close => Event::Close,
-            Evt::Page(w) => Event::Page(Page::new(w))
+            Evt::Page(w) => Event::Page(Page::new(w)),
+            Evt::Request(w) => Event::Request(Request::new(w)),
         }
     }
 }
