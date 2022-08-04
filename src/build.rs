@@ -15,14 +15,10 @@ fn main() {
     fs::write(out_dir.join("pleywright_link"), url.clone()).unwrap();
     download(&url, &dest);
     println!("cargo:rerun-if-changed=src/build.rs");
+    println!("cargo:rerun-if-env-changed=DRIVER_VERSION");
     println!("cargo:rustc-env=SEP={}", MAIN_SEPARATOR);
 }
 
-fn remove_cached_file() {
-    let cache_dir: &Path = "/tmp/build-playwright-rust".as_ref();
-    let cached = cache_dir.join("driver.zip");
-    fs::remove_file(cached).or::<()>(Ok(())).unwrap();
-}
 
 #[cfg(all(not(feature = "only-for-docs-rs")))]
 fn download(url: &str, dest: &Path) {
