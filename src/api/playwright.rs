@@ -1,16 +1,12 @@
 pub use crate::imp::playwright::DeviceDescriptor;
-use crate::{
-    api::{browser_type::BrowserType, selectors::Selectors},
-    imp::{core::*, playwright::Playwright as Impl, prelude::*},
-    Error
-};
+use crate::{api::{browser_type::BrowserType, selectors::Selectors}, imp::{core::*, playwright::Playwright as Impl, prelude::*}, Error, send_message};
 use std::{io, process::Command};
 
 /// Entry point
 pub struct Playwright {
     driver: Driver,
     _conn: Connection,
-    inner: Weak<Impl>
+    inner: Weak<Impl>,
 }
 
 fn run(driver: &Driver, args: &'static [&'static str]) -> io::Result<()> {
@@ -18,7 +14,7 @@ fn run(driver: &Driver, args: &'static [&'static str]) -> io::Result<()> {
     if !status.success() {
         return Err(io::Error::new(
             io::ErrorKind::Other,
-            format!("Exit with {}", status)
+            format!("Exit with {}", status),
         ));
     }
     Ok(())
@@ -34,11 +30,12 @@ impl Playwright {
     /// Constructs from installed playwright driver
     pub async fn with_driver(driver: Driver) -> Result<Playwright, Error> {
         let conn = Connection::run(&driver.executable())?;
+
         let p = Impl::wait_initial_object(&conn).await?;
         Ok(Self {
             driver,
             _conn: conn,
-            inner: p
+            inner: p,
         })
     }
 

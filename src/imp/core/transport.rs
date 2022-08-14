@@ -5,6 +5,7 @@ use std::{
     io::{Read, Write},
     process::{ChildStdin, ChildStdout}
 };
+use std::process::ChildStderr;
 use thiserror::Error;
 
 #[derive(Debug)]

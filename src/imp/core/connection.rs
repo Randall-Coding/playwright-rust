@@ -1,12 +1,11 @@
 use crate::imp::{core::*, prelude::*};
-use std::{
-    io,
-    process::{Child, Command, Stdio},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        TryLockError
-    }
-};
+use std::{fs, io, process::{Child, Command, Stdio}, sync::{
+    atomic::{AtomicBool, Ordering},
+    TryLockError,
+}};
+use futures::executor::block_on;
+use futures::TryFutureExt;
+use crate::imp::playwright::Playwright;
 
 #[derive(Debug)]
 pub(crate) struct Context {
@@ -14,7 +13,7 @@ pub(crate) struct Context {
     ctx: Wm<Context>,
     id: i32,
     callbacks: HashMap<i32, WaitPlaces<WaitMessageResult>>,
-    writer: Writer
+    writer: Writer,
 }
 
 #[derive(Debug)]
@@ -22,7 +21,7 @@ pub(crate) struct Connection {
     _child: Child,
     ctx: Am<Context>,
     reader: Am<Reader>,
-    should_stop: Arc<AtomicBool>
+    should_stop: Arc<AtomicBool>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -70,7 +69,7 @@ pub enum Error {
     #[error("Timed out")]
     Timeout,
     #[error(transparent)]
-    Join(#[from] JoinError)
+    Join(#[from] JoinError),
 }
 
 pub(crate) type ArcResult<T> = Result<T, Arc<Error>>;
@@ -84,11 +83,12 @@ impl Drop for Connection {
 
 impl Connection {
     fn try_new(exec: &Path) -> io::Result<Connection> {
+        let file = fs::File::create("error.log").unwrap();
         let mut child = Command::new(exec)
             .args(&["run-driver"])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::from(file))
             .spawn()?;
         // TODO: env "NODE_OPTIONS"
         let stdin = child.stdin.take().unwrap();
@@ -100,17 +100,39 @@ impl Connection {
             _child: child,
             ctx,
             should_stop: Arc::new(false.into()),
-            reader: Arc::new(Mutex::new(reader))
+            reader: Arc::new(Mutex::new(reader)),
         })
     }
 
     pub(crate) fn run(exec: &Path) -> io::Result<Connection> {
         let conn = Self::try_new(exec)?;
+        block_on(conn.initialize()).unwrap();
         conn.start();
         Ok(conn)
     }
 
-    fn start(&self) {
+    pub async fn initialize(&self) -> Result<(), Error> {
+        let channel = ChannelOwner::new_root();
+
+        let mut r = channel.create_request("initialize".parse().unwrap());
+        r.guid = StrongBuf::try_from(format!("")).unwrap();
+
+        let mut args = Map::new();
+        args.insert(format!("sdkLanguage"), Value::String(format!("rust")));
+        r = r.set_params(args);
+
+        let mut args = Map::new();
+        args.insert(format!("internal"), Value::Bool(true));
+        r = r.set_metadata(args);
+
+        let wait = WaitData::new();
+        let r = r.set_wait(&wait);
+        { self.ctx.lock().unwrap().send_message(r)?; }
+
+        Ok(())
+    }
+
+    pub(crate) fn start(&self) {
         let c2 = Arc::downgrade(&self.ctx);
         let r2 = Arc::downgrade(&self.reader);
         let s2 = Arc::downgrade(&self.should_stop);
@@ -118,7 +140,8 @@ impl Connection {
             let c = c2;
             let r = r2;
             let s = s2;
-            log::trace!("succcess starting connection");
+            log::trace!("success starting connection");
+
             let status = (|| -> Result<(), Error> {
                 loop {
                     {
@@ -192,7 +215,7 @@ impl Context {
             ctx: Weak::new(),
             id: 0,
             callbacks: HashMap::new(),
-            writer
+            writer,
         };
         let am = Arc::new(Mutex::new(ctx));
         am.lock().unwrap().ctx = Arc::downgrade(&am);
@@ -250,7 +273,7 @@ impl Context {
 
     fn respond_wait(
         WaitPlaces { value, waker }: &WaitPlaces<WaitMessageResult>,
-        result: WaitMessageResult
+        result: WaitMessageResult,
     ) {
         let place = match value.upgrade() {
             Some(p) => p,
@@ -272,7 +295,7 @@ impl Context {
     fn create_remote_object(
         &mut self,
         parent: &S<Guid>,
-        params: Map<String, Value>
+        params: Map<String, Value>,
     ) -> Result<(), Error> {
         let CreateParams {
             typ,
@@ -285,7 +308,7 @@ impl Context {
             parent.downgrade(),
             typ.to_owned(),
             guid.to_owned(),
-            initializer
+            initializer,
         );
         let r = RemoteArc::try_new(&typ, self, c)?;
         parent.channel().push_child(r.downgrade());
@@ -314,6 +337,7 @@ impl Context {
             guid,
             method,
             params,
+            metadata,
             place
         } = r;
         self.callbacks.insert(self.id, place);
@@ -321,7 +345,8 @@ impl Context {
             guid: &guid,
             method: &method,
             params,
-            id: self.id
+            id: self.id,
+            metadata,
         };
         self.writer.send(&req)?;
         Ok(())

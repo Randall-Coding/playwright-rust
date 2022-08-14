@@ -104,6 +104,21 @@ impl RootObject {
             channel: ChannelOwner::new_root()
         }
     }
+
+    pub async fn initialize(&self) -> Result<(), Error>{
+        let mut r = self.channel.create_request("initialize".parse().unwrap());
+        r.guid = StrongBuf::try_from(format!("")).unwrap();
+        // r.set_wait()
+        let mut args = Map::new();
+        args.insert(format!("sdkLanguage"), Value::String(format!("rust")));
+        r = r.set_params(args);
+        let mut args = Map::new();
+        args.insert(format!("internal"), Value::Bool(true));
+        r = r.set_metadata(args);
+        self.channel.send_message(r);
+        ///{ self.ctx.lock().unwrap().send_message(r)?; }
+        Ok(())
+    }
 }
 
 impl Default for RootObject {
@@ -285,12 +300,15 @@ mod remote_enum {
 }
 
 pub(crate) use remote_enum::{RemoteArc, RemoteWeak};
+use crate::Playwright;
 
+#[derive(Debug)]
 pub(crate) struct RequestBody {
     pub(crate) guid: Str<Guid>,
     pub(crate) method: Str<Method>,
     pub(crate) params: Map<String, Value>,
-    pub(crate) place: WaitPlaces<WaitMessageResult>
+    pub(crate) metadata: Map<String, Value>,
+    pub(crate) place: WaitPlaces<WaitMessageResult>,
 }
 
 impl RequestBody {
@@ -299,6 +317,7 @@ impl RequestBody {
             guid,
             method,
             params: Map::default(),
+            metadata: Map::default(),
             place: WaitPlaces::new_empty()
         }
     }
@@ -310,6 +329,11 @@ impl RequestBody {
 
     pub(crate) fn set_params(mut self, params: Map<String, Value>) -> Self {
         self.params = params;
+        self
+    }
+
+    pub(crate) fn set_metadata(mut self, params: Map<String, Value>) -> Self {
+        self.metadata = params;
         self
     }
 
